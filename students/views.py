@@ -36,8 +36,14 @@ def student_list(request):
     if status in dict(Student.Status.choices):
         students = [s for s in students if s.status == status]
 
+    is_filtered = bool(q or status)
+
     if request.GET.get("rows"):
-        response = render(request, "students/_rows.html", {"students": students})
+        response = render(
+            request,
+            "students/_rows.html",
+            {"students": students, "is_filtered": is_filtered},
+        )
         response["X-Result-Count"] = str(len(students))
         return response
 
@@ -62,6 +68,7 @@ def student_list(request):
         {
             "students": students,
             "selected": selected,
+            "is_filtered": is_filtered,
             "q": q,
             "status": status,
             "query": urlencode(params),

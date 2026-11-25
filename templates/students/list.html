@@ -40,10 +40,18 @@
       <a class="{% if status == 'active' %}on{% endif %}" href="?status=active{% if q %}&amp;q={{ q|urlencode }}{% endif %}">Active</a>
       <a class="{% if status == 'inactive' %}on{% endif %}" href="?status=inactive{% if q %}&amp;q={{ q|urlencode }}{% endif %}">Inactive</a>
     </nav>
+    <div class="view-switch" role="group" aria-label="Layout">
+      <button class="view-btn on" type="button" data-view="grid" aria-pressed="true" aria-label="Card view" title="Card view">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="8" height="8" rx="2"/><rect x="13" y="3" width="8" height="8" rx="2"/><rect x="3" y="13" width="8" height="8" rx="2"/><rect x="13" y="13" width="8" height="8" rx="2"/></svg>
+      </button>
+      <button class="view-btn" type="button" data-view="list" aria-pressed="false" aria-label="List view" title="List view">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h13M8 12h13M8 18h13"/><path d="M3.5 6h.01M3.5 12h.01M3.5 18h.01"/></svg>
+      </button>
+    </div>
   </div>
 </div>
 
-<div class="table">
+<div class="table is-grid" id="student-table">
   <div class="thead">
     <span>Student</span>
     <span class="c-program">Program</span>
@@ -94,6 +102,7 @@
                 <div class="f{% if field.name == 'address' or field.name == 'notes' %} wide{% endif %}{% if field.errors %} invalid{% endif %}">
                   <label for="{{ field.id_for_label }}">{{ field.label }}{% if field.field.required %} <span class="req">*</span>{% endif %}</label>
                   {{ field }}
+                  {% if field.help_text %}<span class="help" id="{{ field.auto_id }}_helptext">{{ field.help_text }}</span>{% endif %}
                   {% for error in field.errors %}<span class="error">{{ error }}</span>{% endfor %}
                 </div>
               {% endfor %}
@@ -173,7 +182,8 @@
       );
       history.replaceState(null, "", url);
     } catch (error) {
-      if (error.name !== "AbortError") throw error;
+      // A superseded keystroke or an offline blip: keep the rows already shown.
+      if (error.name !== "AbortError") return;
     }
   };
 
@@ -188,6 +198,41 @@
     refreshRows();
   });
 
+  // Card / list switch, remembered between visits.
+  const table = document.getElementById("student-table");
+  const viewButtons = [...document.querySelectorAll("[data-view]")];
+
+  // localStorage can throw (private mode, disabled storage); never let that
+  // stop the rest of the page from being wired up.
+  const storedView = (() => {
+    try {
+      return localStorage.getItem("students-view");
+    } catch {
+      return null;
+    }
+  })();
+
+  const setView = (view, persist = true) => {
+    table.classList.toggle("is-grid", view === "grid");
+    viewButtons.forEach((button) => {
+      const active = button.dataset.view === view;
+      button.classList.toggle("on", active);
+      button.setAttribute("aria-pressed", String(active));
+    });
+    if (!persist) return;
+    try {
+      localStorage.setItem("students-view", view);
+    } catch {
+      /* remember preference is best effort */
+    }
+  };
+
+  viewButtons.forEach((button) =>
+    button.addEventListener("click", () => setView(button.dataset.view))
+  );
+
+  setView(storedView === "list" ? "list" : "grid", false);
+
   // Delegated so rows fetched by the live search keep working.
   rows.addEventListener("click", async (event) => {
     const row = event.target.closest("[data-student]");
@@ -195,9 +240,17 @@
     if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
     event.preventDefault();
     lastFocus = row;
-    const res = await fetch(`?student=${row.dataset.student}&partial=1`);
-    if (!res.ok) return;
-    profileBody.innerHTML = await res.text();
+    let html;
+    try {
+      const res = await fetch(`?student=${row.dataset.student}&partial=1`);
+      if (!res.ok) throw new Error(`profile request failed (${res.status})`);
+      html = await res.text();
+    } catch {
+      // Progressive fallback: the row link still works without JavaScript.
+      location.href = row.href;
+      return;
+    }
+    profileBody.innerHTML = html;
     const url = new URL(location.href);
     url.searchParams.set("student", row.dataset.student);
     history.replaceState(null, "", url);
@@ -218,8 +271,8 @@
 
   document.addEventListener("keydown", (event) => {
     if (event.key !== "Escape") return;
-    const open = modals.find((modal) => modal.classList.contains("open"));
-    if (open) hide(open);
+    const open = modals.filter((modal) => modal.classList.contains("open"));
+    if (open.length) hide(open[open.length - 1]);
   });
 
   modals.filter((modal) => modal.classList.contains("open")).forEach((modal) => {

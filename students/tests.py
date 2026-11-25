@@ -61,6 +61,53 @@ class ProfileViewTests(TestCase):
         self.assertNotContains(response, "<html")
         self.assertEqual(response["X-Result-Count"], "1")
 
+    def test_grid_and_list_view_switch_is_present(self):
+        response = self.client.get(reverse("student-list"))
+        self.assertContains(response, 'data-view="grid"')
+        self.assertContains(response, 'data-view="list"')
+        self.assertContains(response, "student-table")
+        self.assertContains(response, 'aria-label="Card view"')
+        self.assertContains(response, 'aria-label="List view"')
+
+    def test_attendance_help_text_is_rendered_with_its_id(self):
+        response = self.client.get(reverse("student-list"))
+        self.assertContains(response, 'id="id_attendance_helptext"')
+        self.assertContains(response, 'aria-describedby="id_attendance_helptext"')
+
+    def test_year_level_out_of_range_is_rejected(self):
+        for value in ("0", "7"):
+            response = self.client.post(
+                reverse("student-list"),
+                {
+                    "first_name": "Test", "last_name": "Enrollee",
+                    "student_id": f"2024-90{value}", "email": f"t{value}@example.com",
+                    "program": "BS Nursing", "year_level": value,
+                    "attendance": "90", "enrolled_on": "2024-08-05", "status": "active",
+                },
+            )
+            self.assertEqual(response.status_code, 200)
+            self.assertIn("year_level", response.context["add_form"].errors)
+        self.assertEqual(Student.objects.count(), 2)
+
+    def test_year_label_covers_first_to_sixth(self):
+        student = Student(year_level=6)
+        self.assertEqual(student.year_label, "6th Year")
+        student.year_level = 0
+        self.assertEqual(student.year_label, "1st Year")
+
+    def test_attendance_above_one_hundred_is_rejected(self):
+        response = self.client.post(
+            reverse("student-list"),
+            {
+                "first_name": "Test", "last_name": "Enrollee",
+                "student_id": "2024-9500", "email": "t150@example.com",
+                "program": "BS Nursing", "year_level": "1",
+                "attendance": "150", "enrolled_on": "2024-08-05", "status": "active",
+            },
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("attendance", response.context["add_form"].errors)
+
     def test_attendance_is_shown_as_a_percentage(self):
         response = self.client.get(reverse("student-list"))
         self.assertContains(response, "100%")
