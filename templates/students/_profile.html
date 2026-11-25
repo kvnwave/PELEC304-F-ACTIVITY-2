@@ -1,0 +1,54 @@
+<div class="profile">
+  <header class="p-hero">
+    <span class="ava big t{{ s.tone }}">{{ s.initials }}</span>
+    <div class="p-id">
+      <h2 id="p-name">{{ s.full_name }}</h2>
+      <p>{{ s.student_id }} · {{ s.program }}</p>
+    </div>
+    <span class="st {{ s.status }}">{{ s.get_status_display }}</span>
+  </header>
+
+  <div class="p-body">
+    <section class="p-sec">
+      <h3>Personal information</h3>
+      <div class="p-grid">
+        <div class="p-field"><span class="k">Date of birth</span><span class="v">{{ s.date_of_birth|date:"F j, Y"|default:"—" }}</span></div>
+        <div class="p-field"><span class="k">Phone</span><span class="v">{{ s.phone|default:"—" }}</span></div>
+        <div class="p-field"><span class="k">Email</span><span class="v"><a href="mailto:{{ s.email }}">{{ s.email }}</a></span></div>
+        <div class="p-field"><span class="k">Address</span><span class="v">{{ s.address|default:"—" }}</span></div>
+      </div>
+    </section>
+
+    <section class="p-sec">
+      <h3>Background information</h3>
+      <div class="p-grid">
+        <div class="p-field"><span class="k">Guardian</span><span class="v">{{ s.guardian_name|default:"—" }}</span></div>
+        <div class="p-field"><span class="k">Guardian phone</span><span class="v">{{ s.guardian_phone|default:"—" }}</span></div>
+        <div class="p-field"><span class="k">Previous school</span><span class="v">{{ s.previous_school|default:"—" }}</span></div>
+        <div class="p-field"><span class="k">Enrolled on</span><span class="v">{{ s.enrolled_on|date:"F j, Y" }}</span></div>
+      </div>
+    </section>
+
+    <section class="p-sec">
+      <h3>Academic information</h3>
+      <div class="p-grid">
+        <div class="p-field"><span class="k">Program</span><span class="v">{{ s.program }}</span></div>
+        <div class="p-field"><span class="k">Year level</span><span class="v">{{ s.year_label }}</span></div>
+        <div class="p-field"><span class="k">Section</span><span class="v">{{ s.section|default:"—" }}</span></div>
+        <div class="p-field"><span class="k">Attendance</span><span class="v">{{ s.attendance }}%{% if s.attendance == 100 %} <span class="muted-note">· no absences</span>{% endif %}</span></div>
+      </div>
+    </section>
+
+    {% if s.notes %}
+    <section class="p-sec">
+      <h3>Notes</h3>
+      <p class="p-notes">{{ s.notes }}</p>
+    </section>
+    {% endif %}
+  </div>
+
+  <footer class="p-foot">
+    <span>Student ID {{ s.student_id }}</span>
+    <span>Enrolled {{ s.enrolled_on|date:"M j, Y" }}</span>
+  </footer>
+</div>

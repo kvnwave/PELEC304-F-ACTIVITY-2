@@ -1,0 +1,231 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="stats">
+  <article class="stat">
+    <p class="k">Total students</p>
+    <p class="v">{{ stats.total }}</p>
+    <p class="n"><i class="d blue"></i>Enrolled in this class</p>
+  </article>
+  <article class="stat">
+    <p class="k">Active</p>
+    <p class="v">{{ stats.active }}</p>
+    <p class="n"><i class="d green"></i>Currently attending</p>
+  </article>
+  <article class="stat">
+    <p class="k">Programs</p>
+    <p class="v">{{ stats.programs }}</p>
+    <p class="n"><i class="d violet"></i>Across all year levels</p>
+  </article>
+  <article class="stat">
+    <p class="k">Average attendance</p>
+    <p class="v">{% if stats.avg_attendance is not None %}{{ stats.avg_attendance|floatformat:0 }}%{% else %}—{% endif %}</p>
+    <p class="n"><i class="d amber"></i>100% means no absences</p>
+  </article>
+</section>
+
+<div class="toolbar">
+  <div class="toolbar-left">
+    <h2>Class list</h2>
+    <span class="count" aria-live="polite">{{ students|length }}</span>
+  </div>
+  <div class="toolbar-right">
+    <form class="search" id="search-form" method="get" action="{% url 'student-list' %}" role="search">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+      <input type="search" name="q" value="{{ request.GET.q|default:'' }}" placeholder="Search students" aria-label="Search students">
+      {% if request.GET.status %}<input type="hidden" name="status" value="{{ request.GET.status }}">{% endif %}
+    </form>
+    <nav class="seg" aria-label="Filter by status">
+      <a class="{% if not status %}on{% endif %}" href="?{% if q %}q={{ q|urlencode }}{% endif %}">All</a>
+      <a class="{% if status == 'active' %}on{% endif %}" href="?status=active{% if q %}&amp;q={{ q|urlencode }}{% endif %}">Active</a>
+      <a class="{% if status == 'inactive' %}on{% endif %}" href="?status=inactive{% if q %}&amp;q={{ q|urlencode }}{% endif %}">Inactive</a>
+    </nav>
+  </div>
+</div>
+
+<div class="table">
+  <div class="thead">
+    <span>Student</span>
+    <span class="c-program">Program</span>
+    <span class="c-section">Section</span>
+    <span class="c-att">Attendance</span>
+    <span>Status</span>
+    <span aria-hidden="true"></span>
+  </div>
+
+  <div id="rows">{% include "students/_rows.html" %}</div>
+</div>
+
+<div class="modal{% if selected %} open{% endif %}" id="modal">
+  <div class="backdrop" data-close></div>
+  <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="p-name">
+    <button class="modal-x" type="button" data-close aria-label="Close profile">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m6 6 12 12M18 6 6 18"/></svg>
+    </button>
+    <div id="modal-body">{% if selected %}{% include "students/_profile.html" with s=selected %}{% endif %}</div>
+  </div>
+</div>
+
+<div class="modal{% if show_add %} open{% endif %}" id="add-modal">
+  <div class="backdrop" data-close></div>
+  <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="add-title">
+    <form method="post" action="{% url 'student-list' %}" novalidate>
+      {% csrf_token %}
+      <header class="p-hero">
+        <div class="p-id">
+          <h2 id="add-title">Add student</h2>
+          <p>Register a new enrollee in this class.</p>
+        </div>
+        <button class="modal-x" type="button" data-close aria-label="Close form">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m6 6 12 12M18 6 6 18"/></svg>
+        </button>
+      </header>
+
+      <div class="p-body">
+        {% if add_form.non_field_errors %}
+          <div class="alert">{{ add_form.non_field_errors|join:" " }}</div>
+        {% endif %}
+
+        {% for title, fields in add_form.grouped_fields %}
+          <section class="p-sec">
+            <h3>{{ title }}</h3>
+            <div class="form-grid">
+              {% for field in fields %}
+                <div class="f{% if field.name == 'address' or field.name == 'notes' %} wide{% endif %}{% if field.errors %} invalid{% endif %}">
+                  <label for="{{ field.id_for_label }}">{{ field.label }}{% if field.field.required %} <span class="req">*</span>{% endif %}</label>
+                  {{ field }}
+                  {% for error in field.errors %}<span class="error">{{ error }}</span>{% endfor %}
+                </div>
+              {% endfor %}
+            </div>
+          </section>
+        {% endfor %}
+      </div>
+
+      <footer class="p-foot form-foot">
+        <span>Fields marked <span class="req">*</span> are required</span>
+        <div class="form-actions">
+          <button class="btn ghost" type="button" data-close>Cancel</button>
+          <button class="btn primary" type="submit">Save student</button>
+        </div>
+      </footer>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(() => {
+  const modals = [...document.querySelectorAll(".modal")];
+  const profile = document.getElementById("modal");
+  const profileBody = document.getElementById("modal-body");
+  let lastFocus = null;
+
+  const focusTarget = (modal) =>
+    modal.querySelector("[autofocus]") ||
+    modal.querySelector("input:not([type=hidden]), select, textarea, button");
+
+  const unlock = () => {
+    if (modals.every((modal) => !modal.classList.contains("open"))) {
+      document.body.classList.remove("locked");
+    }
+  };
+
+  const show = (modal) => {
+    modal.classList.add("open");
+    document.body.classList.add("locked");
+    focusTarget(modal)?.focus();
+  };
+
+  const hide = (modal) => {
+    modal.classList.remove("open");
+    if (modal === profile) {
+      profileBody.innerHTML = "";
+      const url = new URL(location.href);
+      url.searchParams.delete("student");
+      history.replaceState(null, "", url);
+    }
+    unlock();
+    lastFocus?.focus();
+  };
+
+  // Live fuzzy search: the table refreshes as you type, no Enter needed.
+  const searchForm = document.getElementById("search-form");
+  const searchInput = searchForm.querySelector('input[name="q"]');
+  const rows = document.getElementById("rows");
+  const count = document.querySelector(".count");
+  let typing = null;
+  let pending = null;
+
+  const refreshRows = async () => {
+    const params = new URLSearchParams(new FormData(searchForm));
+    pending?.abort();
+    pending = new AbortController();
+    try {
+      const res = await fetch(`?rows=1&${params}`, { signal: pending.signal });
+      if (!res.ok) return;
+      rows.innerHTML = await res.text();
+      count.textContent = res.headers.get("X-Result-Count") ?? "0";
+      const url = new URL(location.href);
+      params.forEach((value, key) =>
+        value ? url.searchParams.set(key, value) : url.searchParams.delete(key)
+      );
+      history.replaceState(null, "", url);
+    } catch (error) {
+      if (error.name !== "AbortError") throw error;
+    }
+  };
+
+  searchInput.addEventListener("input", () => {
+    clearTimeout(typing);
+    typing = setTimeout(refreshRows, 180);
+  });
+
+  searchForm.addEventListener("submit", (event) => {
+    event.preventDefault();
+    clearTimeout(typing);
+    refreshRows();
+  });
+
+  // Delegated so rows fetched by the live search keep working.
+  rows.addEventListener("click", async (event) => {
+    const row = event.target.closest("[data-student]");
+    if (!row) return;
+    if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    event.preventDefault();
+    lastFocus = row;
+    const res = await fetch(`?student=${row.dataset.student}&partial=1`);
+    if (!res.ok) return;
+    profileBody.innerHTML = await res.text();
+    const url = new URL(location.href);
+    url.searchParams.set("student", row.dataset.student);
+    history.replaceState(null, "", url);
+    show(profile);
+  });
+
+  document.querySelectorAll("[data-open]").forEach((button) =>
+    button.addEventListener("click", () => {
+      lastFocus = button;
+      show(document.getElementById(button.dataset.open));
+    })
+  );
+
+  document.addEventListener("click", (event) => {
+    const closer = event.target.closest("[data-close]");
+    if (closer) hide(closer.closest(".modal"));
+  });
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key !== "Escape") return;
+    const open = modals.find((modal) => modal.classList.contains("open"));
+    if (open) hide(open);
+  });
+
+  modals.filter((modal) => modal.classList.contains("open")).forEach((modal) => {
+    document.body.classList.add("locked");
+    focusTarget(modal)?.focus();
+  });
+})();
+</script>
+{% endblock %}

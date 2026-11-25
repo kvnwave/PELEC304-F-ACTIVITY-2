@@ -1,0 +1,21 @@
+{% for s in students %}
+  <a class="row" href="?student={{ s.pk }}{% if query %}&amp;{{ query }}{% endif %}" data-student="{{ s.pk }}">
+    <span class="cell student">
+      <span class="ava t{{ s.tone }}">{{ s.initials }}</span>
+      <span class="who">
+        <b>{{ s.full_name }}</b>
+        <small>{{ s.student_id }} · {{ s.email }}</small>
+      </span>
+    </span>
+    <span class="cell c-program">{{ s.program }}</span>
+    <span class="cell c-section">{{ s.section|default:"—" }}</span>
+    <span class="cell c-att"><span class="att {{ s.attendance_tone }}">{{ s.attendance }}%</span></span>
+    <span class="cell"><span class="st {{ s.status }}">{{ s.get_status_display }}</span></span>
+    <svg class="go" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg>
+  </a>
+{% empty %}
+  <div class="empty">
+    <p>No students found</p>
+    <small>Try a different name, ID or filter.</small>
+  </div>
+{% endfor %}
