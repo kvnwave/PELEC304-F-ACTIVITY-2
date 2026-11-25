@@ -26,7 +26,10 @@ class Student(models.Model):
 
     # Academic
     program = models.CharField(max_length=80)
-    year_level = models.PositiveSmallIntegerField(default=1)
+    year_level = models.PositiveSmallIntegerField(
+        default=1,
+        validators=[MinValueValidator(1), MaxValueValidator(6)],
+    )
     section = models.CharField(max_length=20, blank=True)
     attendance = models.PositiveSmallIntegerField(
         default=100,
@@ -53,7 +56,8 @@ class Student(models.Model):
 
     @property
     def year_label(self):
-        return ("1st", "2nd", "3rd", "4th", "5th")[min(self.year_level, 5) - 1] + " Year"
+        labels = ("1st", "2nd", "3rd", "4th", "5th", "6th")
+        return f"{labels[max(1, min(self.year_level, len(labels))) - 1]} Year"
 
     @property
     def search_text(self):

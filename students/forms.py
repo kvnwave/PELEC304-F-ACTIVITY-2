@@ -11,7 +11,6 @@ class StudentForm(forms.ModelForm):
         ("Academic information", ("student_id", "program", "year_level", "section", "attendance", "enrolled_on", "status")),
         ("Background information", ("guardian_name", "guardian_phone", "previous_school", "notes")),
     )
-    WIDE = {"address", "notes"}
 
     class Meta:
         model = Student
@@ -40,6 +39,3 @@ class StudentForm(forms.ModelForm):
     def grouped_fields(self):
         for title, names in self.GROUPS:
             yield title, [self[name] for name in names]
-
-    def is_wide(self, name):
-        return name in self.WIDE
