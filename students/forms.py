@@ -6,6 +6,15 @@ from .models import Student
 class StudentForm(forms.ModelForm):
     """Enrollment form used by the "Add student" modal."""
 
+    # Declared explicitly so the number input also advertises 1-6 in the browser
+    # (PositiveSmallIntegerField would otherwise render min="0").
+    year_level = forms.IntegerField(
+        min_value=1,
+        max_value=6,
+        label="Year level",
+        widget=forms.NumberInput(attrs={"step": 1}),
+    )
+
     GROUPS = (
         ("Personal information", ("first_name", "last_name", "date_of_birth", "phone", "email", "address")),
         ("Academic information", ("student_id", "program", "year_level", "section", "attendance", "enrolled_on", "status")),
@@ -21,7 +30,6 @@ class StudentForm(forms.ModelForm):
         )
         labels = {
             "student_id": "Student ID",
-            "year_level": "Year level",
             "attendance": "Attendance (%)",
             "date_of_birth": "Date of birth",
             "guardian_phone": "Guardian phone",
